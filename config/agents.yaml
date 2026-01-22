@@ -1,0 +1,18 @@
+# FinanceAI Agent Configuration
+# LLM parameters for each agent module
+
+technical:
+  temperature: 0.3
+  max_tokens: 4096
+
+fundamental:
+  temperature: 0.3
+  max_tokens: 4096
+
+research:
+  temperature: 0.5
+  max_tokens: 8192
+
+chat:
+  temperature: 0.7
+  max_tokens: 4096

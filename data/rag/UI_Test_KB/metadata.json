@@ -1,0 +1,20 @@
+{
+  "name": "UI_Test_KB",
+  "provider": "chromadb",
+  "retrieval_mode": "vector",
+  "created_at": "2026-01-20T11:25:44.195611",
+  "updated_at": "2026-01-20T11:25:44.195611",
+  "chunk_config": {
+    "strategy": "text",
+    "chunk_size": 1000,
+    "chunk_overlap": 200
+  },
+  "embedding_info": {
+    "model": "text-embedding-3-small",
+    "binding": "openai",
+    "dimensions": 1536
+  },
+  "documents": [],
+  "total_chunks": 0,
+  "extra": {}
+}

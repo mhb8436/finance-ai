@@ -1,0 +1,90 @@
+# FinanceAI Main Configuration
+
+# System settings
+system:
+  language: ko  # ko, en
+  log_level: INFO
+
+# Default market
+default_market: US  # US, KR
+
+# Technical indicators
+indicators:
+  available:
+    - sma
+    - ema
+    - rsi
+    - macd
+    - bollinger
+    - atr
+    - obv
+    - vwap
+    - stochastic
+  defaults:
+    - sma_20
+    - sma_50
+    - rsi_14
+    - macd
+
+# Analysis settings
+analysis:
+  technical:
+    default_period: 6mo
+    default_interval: 1d
+  fundamental:
+    include_financials: true
+    include_ratios: true
+
+# Research settings
+research:
+  presets:
+    quick:
+      max_symbols: 2
+      depth: quick
+    medium:
+      max_symbols: 5
+      depth: medium
+    deep:
+      max_symbols: 10
+      depth: deep
+
+# Data provider settings
+data_providers:
+  primary: yfinance  # yfinance, alpha_vantage
+  fallback: true
+
+# Cache settings
+cache:
+  enabled: true
+  ttl_seconds: 300  # 5 minutes for price data
+  max_size_mb: 100
+
+# Tool Router settings (retry, timeout)
+tool_router:
+  timeout: 30  # seconds per tool call
+  max_retries: 2
+  retry_delay: 1.0  # seconds between retries
+  max_result_size: 50000  # bytes, truncate if larger
+
+# Context Enricher settings (Phase 2)
+context_enricher:
+  enabled: true
+  # Tools to pre-fetch based on intent
+  stock_query:
+    - stock_price
+    - stock_info
+    - news_search
+  news_query:
+    - news_search
+    - web_search
+  analysis_query:
+    - stock_price
+    - stock_info
+    - financial_ratios
+    - technical_indicators
+
+# Data Summarizer settings (NoteAgent pattern)
+data_summarizer:
+  enabled: true
+  max_raw_size: 50000  # bytes
+  summary_max_tokens: 500

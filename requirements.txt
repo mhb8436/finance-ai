@@ -1,0 +1,41 @@
+# FinanceAI Python Dependencies
+
+# Web Framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+websockets>=12.0
+
+# LLM
+openai>=1.0.0
+anthropic>=0.25.0  # Optional: for Anthropic Claude support
+
+# Data Processing
+numpy>=1.24.0
+pandas>=2.0.0
+pyyaml>=6.0
+
+# Stock Data
+yfinance>=0.2.30
+pykrx>=1.0.0
+
+# HTTP Client
+httpx>=0.25.0
+aiofiles>=23.0.0
+
+# RAG / Vector Store
+chromadb>=0.4.0
+pdfplumber>=0.10.0
+
+# Web Search
+duckduckgo-search>=6.0.0
+
+# YouTube
+youtube-transcript-api>=0.6.0
+
+# Utilities
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+
+# Development
+pytest>=7.0.0
+ruff>=0.1.0
