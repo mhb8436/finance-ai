@@ -127,6 +127,7 @@ class ResearchPipeline:
         market: str = "US",
         skip_rephrase: bool = False,
         output_format: str = "markdown",
+        language: str = "ko",
     ) -> dict[str, Any]:
         """Run the complete research pipeline.
 
@@ -137,6 +138,7 @@ class ResearchPipeline:
             market: Target market (US, KR, Both).
             skip_rephrase: Skip topic rephrasing.
             output_format: Report format (markdown, json, html).
+            language: Report language (ko or en).
 
         Returns:
             Dictionary with all pipeline results.
@@ -225,6 +227,7 @@ class ResearchPipeline:
                 topic_notes=topic_notes,
                 queue_stats=self._queue.get_statistics(),
                 output_format=output_format,
+                language=language,
             )
             results["report"] = report
 
@@ -338,6 +341,7 @@ class ResearchPipeline:
         context: str = "",
         symbols: list[str] | None = None,
         market: str = "US",
+        language: str = "ko",
     ) -> AsyncIterator[dict[str, Any]]:
         """Run the pipeline with streaming progress updates.
 
@@ -346,6 +350,7 @@ class ResearchPipeline:
             context: Additional context.
             symbols: Stock symbols.
             market: Target market.
+            language: Report language (ko or en).
 
         Yields:
             Progress updates as dictionaries.
@@ -447,6 +452,7 @@ class ResearchPipeline:
             synthesized_notes=synthesized,
             topic_notes=topic_notes,
             queue_stats=self._queue.get_statistics(),
+            language=language,
         )
         yield {"event": "stage_complete", "stage": "report", "report": report}
 

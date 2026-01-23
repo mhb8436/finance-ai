@@ -520,24 +520,55 @@ async def get_transcript_and_store_to_rag(
             "error": "Could not get transcript. Video may not have captions.",
         }
 
-    # Create chunk from transcript
-    chunk = Chunk(
-        content=transcript.to_text(),
-        chunk_type="youtube_transcript",
-        metadata={
-            "video_id": transcript.video_id,
-            "title": transcript.title,
-            "channel_name": transcript.channel_name,
-            "language": transcript.language,
-            "duration_seconds": transcript.duration_seconds,
-            "url": f"https://www.youtube.com/watch?v={transcript.video_id}",
-        },
-    )
+    # Create metadata for all chunks
+    base_metadata = {
+        "video_id": transcript.video_id,
+        "title": transcript.title,
+        "channel_name": transcript.channel_name,
+        "language": transcript.language,
+        "duration_seconds": transcript.duration_seconds,
+        "url": f"https://www.youtube.com/watch?v={transcript.video_id}",
+        "source": f"youtube:{transcript.video_id}",
+    }
+
+    # Split text into chunks (max ~6000 chars to stay under token limit)
+    full_text = transcript.to_text()
+    chunk_size = 6000
+    chunk_overlap = 200
+
+    chunks = []
+    start = 0
+    chunk_idx = 0
+
+    while start < len(full_text):
+        end = min(start + chunk_size, len(full_text))
+
+        # Try to break at sentence boundary
+        if end < len(full_text):
+            # Look for sentence ending within last 200 chars
+            for i in range(end, max(start + chunk_size - 200, start), -1):
+                if full_text[i] in '.!?\n':
+                    end = i + 1
+                    break
+
+        chunk_text = full_text[start:end].strip()
+        if chunk_text:
+            chunks.append(Chunk(
+                content=chunk_text,
+                chunk_type="youtube_transcript",
+                metadata={
+                    **base_metadata,
+                    "chunk_index": chunk_idx,
+                },
+            ))
+            chunk_idx += 1
+
+        start = end - chunk_overlap if end < len(full_text) else end
 
     # Store in RAG
     service = get_rag_service()
     retriever = service._get_or_create_retriever(kb_name)
-    await retriever.add_chunks([chunk])
+    await retriever.add_chunks(chunks)
 
     return {
         "success": True,
@@ -547,6 +578,7 @@ async def get_transcript_and_store_to_rag(
         "language": transcript.language,
         "duration_minutes": round(transcript.duration_seconds / 60, 1),
         "text_length": len(transcript.text),
+        "chunks_created": len(chunks),
         "kb_name": kb_name,
         "stored": True,
     }

@@ -9,6 +9,7 @@ from .types import LLMProvider
 PROVIDER_URL_PATTERNS: dict[str, LLMProvider] = {
     "api.openai.com": LLMProvider.OPENAI,
     "openai.azure.com": LLMProvider.AZURE,  # Azure OpenAI
+    "cognitiveservices.azure.com": LLMProvider.AZURE,  # Azure Cognitive Services
     "api.anthropic.com": LLMProvider.ANTHROPIC,
     "api.deepseek.com": LLMProvider.DEEPSEEK,
     "api.groq.com": LLMProvider.GROQ,

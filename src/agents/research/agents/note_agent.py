@@ -74,14 +74,14 @@ class NoteAgent(BaseAgent):
         self,
         model: str | None = None,
         temperature: float = 0.3,
-        max_tokens: int = 2000,
+        max_tokens: int = 16000,
     ):
         """Initialize the NoteAgent.
 
         Args:
             model: LLM model to use.
             temperature: Lower temperature for consistent notes.
-            max_tokens: Max tokens for response.
+            max_tokens: Max tokens for response (increased for reasoning models like gpt-5).
         """
         super().__init__(model=model, temperature=temperature, max_tokens=max_tokens)
 
@@ -188,7 +188,23 @@ Summary: {trace.summary}
                 else:
                     json_str = response
 
-            return json.loads(json_str)
+            result = json.loads(json_str)
+            # Ensure we return a dict
+            if isinstance(result, dict):
+                return result
+            elif isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                return result[0]
+            else:
+                logger.warning(f"Unexpected JSON type: {type(result)}")
+                return {
+                    "topic": "",
+                    "summary": response.strip(),
+                    "key_insights": [],
+                    "data_points": [],
+                    "uncertainties": [],
+                    "connections": [],
+                    "importance_score": 5,
+                }
         except json.JSONDecodeError:
             logger.warning(f"Failed to parse note response: {response[:100]}...")
             return {

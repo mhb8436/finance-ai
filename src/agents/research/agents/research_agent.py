@@ -96,7 +96,7 @@ class ResearchAgent(BaseAgent):
         self,
         model: str | None = None,
         temperature: float = 0.4,
-        max_tokens: int = 2000,
+        max_tokens: int = 8000,
         tool_handlers: dict[str, Callable[..., Awaitable[Any]]] | None = None,
         use_tool_router: bool = True,
     ):
@@ -105,7 +105,7 @@ class ResearchAgent(BaseAgent):
         Args:
             model: LLM model to use.
             temperature: Temperature for generation.
-            max_tokens: Max tokens for response.
+            max_tokens: Max tokens for response (increased for reasoning models like gpt-5).
             tool_handlers: Dictionary mapping tool names to handler functions.
                           Only used if use_tool_router is False.
             use_tool_router: If True, use ToolRouter for unified tool execution.
@@ -501,7 +501,20 @@ class ResearchAgent(BaseAgent):
                 else:
                     json_str = response
 
-            return json.loads(json_str)
+            result = json.loads(json_str)
+            # Ensure we return a dict, not a list
+            if isinstance(result, dict):
+                return result
+            elif isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                return result[0]
+            else:
+                logger.warning(f"Unexpected JSON type: {type(result)}")
+                return {
+                    "reasoning": str(result),
+                    "tool_call": None,
+                    "key_findings": [],
+                    "sufficient": True,
+                }
         except json.JSONDecodeError:
             logger.warning(f"Failed to parse research response: {response[:100]}...")
             return {

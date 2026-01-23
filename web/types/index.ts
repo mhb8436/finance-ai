@@ -80,6 +80,7 @@ export interface PipelineResearchRequest {
   skip_rephrase?: boolean
   output_format?: 'markdown' | 'json' | 'html'
   max_topics?: number
+  language?: 'ko' | 'en'
 }
 
 export interface PipelineResearchResponse {

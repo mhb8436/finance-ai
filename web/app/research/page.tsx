@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Search,
   Plus,
@@ -19,21 +19,28 @@ import type { ResearchListItem, ResearchStatus, PipelineResearchRequest } from '
 
 export default function ResearchPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Read URL parameters
+  const initialSymbol = searchParams.get('symbol') || ''
+  const initialMarket = (searchParams.get('market') as 'US' | 'KR') || 'US'
+
   const [researches, setResearches] = useState<ResearchListItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [showNewForm, setShowNewForm] = useState(false)
+  const [showNewForm, setShowNewForm] = useState(!!initialSymbol) // Auto-show form if symbol provided
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Form state
+  // Form state - initialize with URL parameters
   const [formData, setFormData] = useState<PipelineResearchRequest>({
-    topic: '',
+    topic: initialSymbol ? `${initialSymbol} 종목 분석 및 투자 전망` : '',
     symbols: [],
-    market: 'US',
+    market: initialMarket,
     context: '',
     max_topics: 10,
+    language: 'ko',
   })
-  const [symbolInput, setSymbolInput] = useState('')
+  const [symbolInput, setSymbolInput] = useState(initialSymbol)
 
   const fetchResearches = async () => {
     setLoading(true)
@@ -163,7 +170,7 @@ export default function ResearchPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">종목 코드 (쉼표로 구분)</label>
                 <input
@@ -184,6 +191,17 @@ export default function ResearchPage() {
                   <option value="US">미국 (NYSE/NASDAQ)</option>
                   <option value="KR">한국 (KRX)</option>
                   <option value="Both">미국 + 한국</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">보고서 언어</label>
+                <select
+                  value={formData.language}
+                  onChange={(e) => setFormData({ ...formData, language: e.target.value as 'ko' | 'en' })}
+                  className="input"
+                >
+                  <option value="ko">한국어</option>
+                  <option value="en">English</option>
                 </select>
               </div>
             </div>

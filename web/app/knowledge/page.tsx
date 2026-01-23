@@ -177,7 +177,7 @@ export default function KnowledgePage() {
           <div className="flex items-center gap-3 mb-2">
             <Database className="w-8 h-8 text-primary-600" />
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-              Knowledge Base
+              지식 베이스
             </h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400">

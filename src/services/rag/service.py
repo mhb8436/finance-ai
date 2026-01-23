@@ -535,10 +535,12 @@ class RAGService:
             },
         ]
 
+        # Note: For reasoning models (gpt-5, o1, etc.), max_tokens includes
+        # both reasoning tokens and output tokens. Need higher value.
         response = await complete(
             messages=messages,
             temperature=0.3,
-            max_tokens=1000,
+            max_tokens=4000,
         )
 
         return response.content

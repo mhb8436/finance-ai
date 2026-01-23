@@ -31,7 +31,7 @@ export default function ResearchDetailPage() {
 
   const fetchResearch = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await pipelineApi.getStatus(researchId)
+    const { data, error } = await pipelineApi.get(researchId)
     if (error) {
       setError(error)
     } else if (data) {

@@ -67,6 +67,7 @@ class PipelineResearchRequest(BaseModel):
     skip_rephrase: bool = Field(default=False, description="Skip topic optimization step")
     output_format: str = Field(default="markdown", description="Report format: markdown, json, html")
     max_topics: int = Field(default=10, ge=1, le=20, description="Maximum sub-topics to research")
+    language: str = Field(default="ko", description="Report language: ko (Korean) or en (English)")
 
 
 class PipelineResearchResponse(BaseModel):
@@ -224,6 +225,7 @@ async def run_pipeline_task(research_id: str, request: PipelineResearchRequest):
             context=request.context,
             symbols=request.symbols,
             market=request.market,
+            language=request.language,
         ):
             event_type = event.get("event", "")
             stage = event.get("stage", event_type)

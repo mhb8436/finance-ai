@@ -60,14 +60,14 @@ class ManagerAgent(BaseAgent):
         self,
         model: str | None = None,
         temperature: float = 0.3,
-        max_tokens: int = 1500,
+        max_tokens: int = 4000,
     ):
         """Initialize the ManagerAgent.
 
         Args:
             model: LLM model to use.
             temperature: Lower temperature for consistent decisions.
-            max_tokens: Max tokens for response.
+            max_tokens: Max tokens for response (increased for reasoning models).
         """
         super().__init__(model=model, temperature=temperature, max_tokens=max_tokens)
         self._iteration_count = 0
@@ -219,7 +219,22 @@ Evaluate progress and decide next steps.""",
                 else:
                     json_str = response
 
-            return json.loads(json_str)
+            result = json.loads(json_str)
+            # Ensure we return a dict
+            if isinstance(result, dict):
+                return result
+            elif isinstance(result, list) and len(result) > 0 and isinstance(result[0], dict):
+                return result[0]
+            else:
+                logger.warning(f"Unexpected JSON type: {type(result)}")
+                return {
+                    "assessment": {"overall_score": 5},
+                    "decision": "continue",
+                    "reasoning": response.strip(),
+                    "next_actions": [],
+                    "gaps_identified": [],
+                    "ready_for_report": False,
+                }
         except json.JSONDecodeError:
             logger.warning(f"Failed to parse manager response: {response[:100]}...")
             return {

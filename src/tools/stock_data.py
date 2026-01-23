@@ -216,6 +216,51 @@ async def _get_kr_stock_info(symbol: str) -> dict[str, Any]:
     return await _get_us_stock_info(f"{symbol}.KS")
 
 
+# Common Korean stocks mapping (name -> code)
+KOREAN_STOCKS = {
+    "삼성전자": "005930",
+    "SK하이닉스": "000660",
+    "LG에너지솔루션": "373220",
+    "삼성바이오로직스": "207940",
+    "현대차": "005380",
+    "현대자동차": "005380",
+    "기아": "000270",
+    "셀트리온": "068270",
+    "KB금융": "105560",
+    "신한지주": "055550",
+    "POSCO홀딩스": "005490",
+    "포스코홀딩스": "005490",
+    "NAVER": "035420",
+    "네이버": "035420",
+    "카카오": "035720",
+    "LG화학": "051910",
+    "삼성SDI": "006400",
+    "현대모비스": "012330",
+    "삼성물산": "028260",
+    "SK이노베이션": "096770",
+    "SK텔레콤": "017670",
+    "LG전자": "066570",
+    "하나금융지주": "086790",
+    "삼성생명": "032830",
+    "삼성전기": "009150",
+    "SK": "034730",
+    "한국전력": "015760",
+    "KT": "030200",
+    "우리금융지주": "316140",
+    "SK바이오팜": "326030",
+    "크래프톤": "259960",
+    "LG": "003550",
+    "고려아연": "010130",
+    "두산에너빌리티": "034020",
+    "HMM": "011200",
+    "한화솔루션": "009830",
+    "SK스퀘어": "402340",
+    "기업은행": "024110",
+    "에코프로": "086520",
+    "에코프로비엠": "247540",
+}
+
+
 async def search_stocks(
     query: str,
     market: str = "US",
@@ -251,7 +296,20 @@ async def search_stocks(
             pass
 
     if market in ["KR", "ALL"]:
-        # Search Korean stocks
+        # First, search in common Korean stocks mapping
+        query_lower = query.lower()
+        for name, code in KOREAN_STOCKS.items():
+            if query_lower in name.lower() or query in code:
+                results.append({
+                    "symbol": code,
+                    "name": name,
+                    "market": "KR",
+                    "exchange": "KRX",
+                })
+                if len(results) >= limit:
+                    return results[:limit]
+
+        # Fallback: Search Korean stocks using pykrx
         try:
             from pykrx import stock
             from datetime import datetime
@@ -262,12 +320,14 @@ async def search_stocks(
             for ticker in tickers:
                 name = stock.get_market_ticker_name(ticker)
                 if query.lower() in name.lower() or query in ticker:
-                    results.append({
-                        "symbol": ticker,
-                        "name": name,
-                        "market": "KR",
-                        "exchange": "KRX",
-                    })
+                    # Avoid duplicates from the mapping
+                    if not any(r["symbol"] == ticker for r in results):
+                        results.append({
+                            "symbol": ticker,
+                            "name": name,
+                            "market": "KR",
+                            "exchange": "KRX",
+                        })
                     if len(results) >= limit:
                         break
         except Exception:

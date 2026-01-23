@@ -14,7 +14,7 @@ from ..data_structures import DynamicTopicQueue, TopicBlock
 
 logger = logging.getLogger(__name__)
 
-REPORT_SYSTEM_PROMPT = """You are a financial research report writer.
+REPORT_SYSTEM_PROMPT_EN = """You are a financial research report writer.
 
 Your task is to create a comprehensive, professional research report.
 The report should:
@@ -36,7 +36,29 @@ Report Structure:
 
 Output the report in markdown format."""
 
-REPORT_USER_TEMPLATE = """Please generate a comprehensive research report:
+REPORT_SYSTEM_PROMPT_KO = """당신은 금융 리서치 리포트 작성 전문가입니다.
+
+전문적이고 종합적인 리서치 리포트를 작성해야 합니다.
+리포트는 다음을 포함해야 합니다:
+1. 요약(Executive Summary)이 포함된 명확한 구조
+2. 적절한 인용과 함께 제시된 분석 결과
+3. 데이터 기반 분석
+4. 실행 가능한 결론
+5. 한계점 및 불확실성 인정
+
+출처 인용 시 [CIT-X-YY] 형식을 사용하세요.
+
+리포트 구조:
+1. 핵심 요약
+2. 리서치 개요
+3. 주요 발견 (주제별)
+4. 데이터 분석
+5. 리스크 요인 및 불확실성
+6. 결론 및 투자 의견
+
+마크다운 형식으로 한국어로 리포트를 작성하세요."""
+
+REPORT_USER_TEMPLATE_EN = """Please generate a comprehensive research report:
 
 Research Topic: {main_topic}
 Research Objective: {objective}
@@ -54,6 +76,24 @@ Research Statistics:
 
 Generate a professional research report in markdown format."""
 
+REPORT_USER_TEMPLATE_KO = """다음 내용을 바탕으로 종합적인 리서치 리포트를 작성해주세요:
+
+리서치 주제: {main_topic}
+리서치 목표: {objective}
+
+종합 요약:
+{synthesized_notes}
+
+개별 주제 분석:
+{topic_notes}
+
+리서치 통계:
+- 분석 주제 수: {topic_count}
+- 도구 호출 수: {tool_count}
+- 리서치 소요 시간: {duration}
+
+전문적인 리서치 리포트를 마크다운 형식으로 한국어로 작성해주세요."""
+
 
 class ReportAgent(BaseAgent):
     """Agent for generating research reports.
@@ -66,14 +106,14 @@ class ReportAgent(BaseAgent):
         self,
         model: str | None = None,
         temperature: float = 0.4,
-        max_tokens: int = 4000,
+        max_tokens: int = 16000,
     ):
         """Initialize the ReportAgent.
 
         Args:
             model: LLM model to use.
             temperature: Temperature for generation.
-            max_tokens: Max tokens for response.
+            max_tokens: Max tokens for response (increased for reasoning models like gpt-5).
         """
         super().__init__(model=model, temperature=temperature, max_tokens=max_tokens)
 
@@ -85,6 +125,7 @@ class ReportAgent(BaseAgent):
         topic_notes: list[dict[str, Any]],
         queue_stats: dict[str, Any] | None = None,
         output_format: str = "markdown",
+        language: str = "ko",
     ) -> dict[str, Any]:
         """Generate a research report.
 
@@ -95,6 +136,7 @@ class ReportAgent(BaseAgent):
             topic_notes: Individual topic notes.
             queue_stats: Optional queue statistics.
             output_format: Output format (markdown, json, html).
+            language: Report language (ko for Korean, en for English).
 
         Returns:
             Dictionary with report content.
@@ -112,11 +154,19 @@ class ReportAgent(BaseAgent):
         updated_at = stats.get("updated_at", "")
         duration = self._calculate_duration(created_at, updated_at)
 
+        # Select prompts based on language
+        if language == "ko":
+            system_prompt = REPORT_SYSTEM_PROMPT_KO
+            user_template = REPORT_USER_TEMPLATE_KO
+        else:
+            system_prompt = REPORT_SYSTEM_PROMPT_EN
+            user_template = REPORT_USER_TEMPLATE_EN
+
         messages = [
-            {"role": "system", "content": REPORT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
-                "content": REPORT_USER_TEMPLATE.format(
+                "content": user_template.format(
                     main_topic=main_topic,
                     objective=research_objective,
                     synthesized_notes=synth_str,
@@ -136,6 +186,7 @@ class ReportAgent(BaseAgent):
                 "research_objective": research_objective,
                 "report_content": response,
                 "format": output_format,
+                "language": language,
                 "generated_at": datetime.utcnow().isoformat(),
                 "statistics": {
                     "topics_researched": stats.get("total_blocks", len(topic_notes)),
@@ -351,6 +402,7 @@ class ReportAgent(BaseAgent):
         main_topic: str,
         synthesized_notes: dict[str, Any],
         max_length: int = 500,
+        language: str = "ko",
     ) -> str:
         """Generate a standalone executive summary.
 
@@ -358,19 +410,27 @@ class ReportAgent(BaseAgent):
             main_topic: The research topic.
             synthesized_notes: Synthesized research notes.
             max_length: Maximum character length.
+            language: Summary language (ko or en).
 
         Returns:
             Executive summary text.
         """
-        messages = [
-            {
-                "role": "system",
-                "content": f"""Generate a concise executive summary (max {max_length} characters)
-for a financial research report. Focus on key findings and actionable insights.""",
-            },
-            {
-                "role": "user",
-                "content": f"""Topic: {main_topic}
+        if language == "ko":
+            system_content = f"""금융 리서치 리포트의 핵심 요약을 간결하게 작성하세요 (최대 {max_length}자).
+주요 발견사항과 실행 가능한 인사이트에 집중하세요. 한국어로 작성하세요."""
+            user_content = f"""주제: {main_topic}
+
+요약: {synthesized_notes.get('overall_summary', '')}
+
+핵심 테마: {', '.join(synthesized_notes.get('key_themes', []))}
+
+신뢰도: {synthesized_notes.get('confidence_assessment', 'medium')}
+
+핵심 요약을 작성하세요:"""
+        else:
+            system_content = f"""Generate a concise executive summary (max {max_length} characters)
+for a financial research report. Focus on key findings and actionable insights."""
+            user_content = f"""Topic: {main_topic}
 
 Summary: {synthesized_notes.get('overall_summary', '')}
 
@@ -378,8 +438,11 @@ Key Themes: {', '.join(synthesized_notes.get('key_themes', []))}
 
 Confidence: {synthesized_notes.get('confidence_assessment', 'medium')}
 
-Generate executive summary:""",
-            },
+Generate executive summary:"""
+
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
         ]
 
         response = await self.call_llm(messages, max_tokens=300)
