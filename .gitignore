@@ -41,6 +41,8 @@ env/
 # Data
 data/user/
 data/cache/
+data/dart_cache/
+data/rag/
 *.log
 
 # Node
