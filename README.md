@@ -60,6 +60,20 @@ AI 리서치 기능으로 생성된 실제 분석 리포트 예시입니다.
 
 📄 [전체 리포트 보기](docs/examples/naver_035420_research_report.md)
 
+### 호텔신라 (008770.KS)
+> **권고: Hold (중립)**
+> 목표주가: Bear 34,000원 / Base 46,000원 / Bull 60,000원
+> 면세사업 회복세, 호텔·레저 부문 실적 개선 중
+
+📄 [전체 리포트 보기](docs/examples/hotelshilla_008770_research_report.md)
+
+### Salesforce (CRM)
+> **권고: HOLD (중립)**
+> 총마진 77%, FCF $12.43bn
+> AI 솔루션 전환 및 Data Cloud 성장 주목
+
+📄 [전체 리포트 보기](docs/examples/salesforce_CRM_research_report.md)
+
 ## 문서
 
 - [프로젝트 비전](docs/VISION.md)
