@@ -51,6 +51,7 @@ class ToolRouter:
         self._handlers[ToolType.STOCK_PRICE.value] = self._handle_stock_price
         self._handlers[ToolType.STOCK_INFO.value] = self._handle_stock_info
         self._handlers[ToolType.FINANCIAL_RATIOS.value] = self._handle_financial_ratios
+        self._handlers[ToolType.FINANCIAL_STATEMENTS.value] = self._handle_financial_statements
         self._handlers[ToolType.TECHNICAL_INDICATORS.value] = self._handle_technical_indicators
 
         # Search tools
@@ -269,6 +270,22 @@ class ToolRouter:
             raise ValueError(f"No financial ratios for {symbol}")
 
         return ratios
+
+    async def _handle_financial_statements(
+        self,
+        symbol: str,
+        market: str = "US",
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Handle financial statements tool (OpenDART for KR, yfinance for US)."""
+        from src.tools.financials import get_financial_statements
+
+        statements = await get_financial_statements(symbol, market)
+
+        if not statements:
+            raise ValueError(f"No financial statements for {symbol}")
+
+        return statements
 
     async def _handle_technical_indicators(
         self,

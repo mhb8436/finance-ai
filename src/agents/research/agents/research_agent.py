@@ -24,8 +24,9 @@ TOOL_NAME_TO_ROUTER_TYPE: dict[str, str] = {
     "web_search": "web_search",
     "stock_data": "stock_price",
     "stock_info": "stock_info",
-    "financials": "financial_ratios",
+    "financials": "financial_statements",  # Changed to use OpenDART financial statements
     "financial_ratios": "financial_ratios",
+    "financial_statements": "financial_statements",
     "news_search": "news_search",
     "youtube": "youtube_transcript",
     "youtube_transcript": "youtube_transcript",
@@ -97,11 +98,11 @@ class ResearchAgent(BaseAgent):
 - rag_search: Search uploaded documents and knowledge base
 - web_search: Search the web for recent information
 - stock_data: Get stock price data and basic info
-- financials: Get financial statements and ratios
+- financials: Get financial statements (revenue, profit, assets, liabilities) - uses OpenDART for Korean stocks
+- financial_ratios: Get financial ratios (ROE, PER, PBR, etc.)
 - news_search: Search recent news articles
 - youtube: Search YouTube for relevant analysis videos
 - technical_analysis: Get technical indicators and patterns
-- fundamental_analysis: Get fundamental analysis data
 """
 
     def __init__(
@@ -455,6 +456,11 @@ class ResearchAgent(BaseAgent):
                 "market": market,
             }
         elif router_type == "financial_ratios":
+            return {
+                "symbol": symbol or query,
+                "market": market,
+            }
+        elif router_type == "financial_statements":
             return {
                 "symbol": symbol or query,
                 "market": market,

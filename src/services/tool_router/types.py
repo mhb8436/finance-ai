@@ -19,6 +19,7 @@ class ToolType(str, Enum):
     STOCK_PRICE = "stock_price"
     STOCK_INFO = "stock_info"
     FINANCIAL_RATIOS = "financial_ratios"
+    FINANCIAL_STATEMENTS = "financial_statements"
     TECHNICAL_INDICATORS = "technical_indicators"
     NEWS_SEARCH = "news_search"
     WEB_SEARCH = "web_search"
@@ -93,6 +94,8 @@ class ToolResult:
             return self._format_stock_info()
         elif self.tool_type == ToolType.FINANCIAL_RATIOS.value:
             return self._format_financial_ratios()
+        elif self.tool_type == ToolType.FINANCIAL_STATEMENTS.value:
+            return self._format_financial_statements()
         elif self.tool_type == ToolType.NEWS_SEARCH.value:
             return self._format_news()
         elif self.tool_type == ToolType.WEB_SEARCH.value:
@@ -185,6 +188,56 @@ class ToolResult:
                     lines.append(f"{key}: {value:.2f}")
                 else:
                     lines.append(f"{key}: {value}")
+
+        return "\n".join(lines)
+
+    def _format_financial_statements(self) -> str:
+        """Format financial statements data (from OpenDART or yfinance)."""
+        data = self.data or {}
+
+        lines = [f"[Financial Statements: {self.query.get('symbol', 'N/A')}]"]
+
+        if data.get("source"):
+            lines.append(f"Source: {data['source']}")
+        if data.get("year"):
+            lines.append(f"Year: {data['year']}")
+
+        # Income Statement
+        income = data.get("income_statement", {})
+        if income:
+            lines.append("\n[Income Statement]")
+            for key, value in income.items():
+                if value is not None:
+                    if isinstance(value, (int, float)) and abs(value) > 1000000:
+                        lines.append(f"  {key}: {value:,.0f}")
+                    elif isinstance(value, float):
+                        lines.append(f"  {key}: {value:.2%}")
+                    else:
+                        lines.append(f"  {key}: {value}")
+
+        # Balance Sheet
+        balance = data.get("balance_sheet", {})
+        if balance:
+            lines.append("\n[Balance Sheet]")
+            for key, value in balance.items():
+                if value is not None:
+                    if isinstance(value, (int, float)) and abs(value) > 1000000:
+                        lines.append(f"  {key}: {value:,.0f}")
+                    elif isinstance(value, float):
+                        lines.append(f"  {key}: {value:.2f}")
+                    else:
+                        lines.append(f"  {key}: {value}")
+
+        # Cash Flow
+        cashflow = data.get("cash_flow", {})
+        if cashflow:
+            lines.append("\n[Cash Flow]")
+            for key, value in cashflow.items():
+                if value is not None:
+                    if isinstance(value, (int, float)) and abs(value) > 1000000:
+                        lines.append(f"  {key}: {value:,.0f}")
+                    else:
+                        lines.append(f"  {key}: {value}")
 
         return "\n".join(lines)
 
