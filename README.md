@@ -42,10 +42,29 @@ python scripts/start_web.py
 - 프론트엔드: http://localhost:3000
 - API 문서: http://localhost:8001/docs
 
+## 샘플 리포트
+
+AI 리서치 기능으로 생성된 실제 분석 리포트 예시입니다.
+
+### 삼성전자 (005930.KS)
+> **권고: 선별적 매수(Selective Buy)**
+> Forward P/E ≈ 8.7, EV/EBITDA ≈ 13.4
+> 메모리 ASP 회복 및 파운드리 성장 시 의미 있는 상승 여지 존재
+
+📄 [전체 리포트 보기](docs/examples/samsung_005930_research_report.md)
+
+### 네이버 (035420.KS)
+> **권고: 중립(보유)**
+> Forward P/E ≈ 19.6x, EV/EBITDA ≈ 14x
+> 12개월 목표주가: 상단 375,000원 / 기준 310,000원 / 하단 235,000원
+
+📄 [전체 리포트 보기](docs/examples/naver_035420_research_report.md)
+
 ## 문서
 
 - [프로젝트 비전](docs/VISION.md)
 - [통합 테스트 시나리오](docs/INTEGRATION_TEST_SCENARIO.md)
+- [샘플 리포트](docs/examples/)
 
 ## 라이선스
 
