@@ -16,6 +16,7 @@ import {
   FileText,
 } from 'lucide-react'
 import { analysisApi } from '@/lib/api'
+import StockSearchInput from '@/components/StockSearchInput'
 import type { AnalysisResult } from '@/types'
 
 export default function FundamentalAnalysisPage() {
@@ -137,36 +138,19 @@ export default function FundamentalAnalysisPage() {
 
         {/* Search Form */}
         <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                종목 코드
-              </label>
-              <input
-                type="text"
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="md:col-span-2">
+              <StockSearchInput
                 value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                placeholder="예: AAPL, 005930"
-                className="input w-full"
-                onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                onChange={(sym) => setSymbol(sym)}
+                market={market}
+                onMarketChange={(mkt) => setMarket(mkt)}
+                label="종목 검색"
+                placeholder="종목명 또는 코드 (예: 삼성전자, AAPL)"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                시장
-              </label>
-              <select
-                value={market}
-                onChange={(e) => setMarket(e.target.value as 'US' | 'KR')}
-                className="input w-full"
-              >
-                <option value="US">미국 (US)</option>
-                <option value="KR">한국 (KR)</option>
-              </select>
-            </div>
-
-            <div className="flex items-end">
+            <div className="flex items-end md:col-span-2">
               <button
                 onClick={handleAnalyze}
                 disabled={loading || !symbol.trim()}

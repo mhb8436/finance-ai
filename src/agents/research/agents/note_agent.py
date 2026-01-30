@@ -154,10 +154,18 @@ class NoteAgent(BaseAgent):
 
         parts = []
         for trace in traces:
+            # Include both raw data and analysis for comprehensive notes
+            raw_data_preview = trace.raw_answer
+            # Truncate very long raw answers for the prompt but keep essential data
+            if len(raw_data_preview) > 3000:
+                raw_data_preview = raw_data_preview[:3000] + "\n... [truncated for brevity]"
+
             parts.append(f"""
 [{trace.citation_id}] {trace.tool_type}
 Query: {trace.query}
-Summary: {trace.summary}
+Data:
+{raw_data_preview}
+Analysis: {trace.summary}
 ---""")
 
         return "\n".join(parts)

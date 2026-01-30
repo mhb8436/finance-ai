@@ -1,9 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, TrendingUp, BarChart3, FileText, MessageSquare, Star, Database, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { stockApi } from '@/lib/api'
+
+interface SearchResult {
+  symbol: string
+  name: string
+  market: string
+  exchange: string
+}
 
 interface MarketIndex {
   name: string
@@ -17,6 +24,13 @@ interface MarketIndex {
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchMarket, setSearchMarket] = useState<'US' | 'KR'>('KR')
+  const searchRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([
     { name: 'S&P 500', symbol: '^GSPC', market: 'US', price: null, change: null, changePercent: null, loading: true },
     { name: 'NASDAQ', symbol: '^IXIC', market: 'US', price: null, change: null, changePercent: null, loading: true },
@@ -43,6 +57,61 @@ export default function Home() {
     fetchMarketData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const searchStocks = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSearchResults([])
+      setShowDropdown(false)
+      return
+    }
+
+    // Skip autocomplete for valid stock codes
+    const isUSSymbol = /^[A-Za-z]{1,5}$/.test(query)
+    const isKRCode = /^\d{6}$/.test(query)
+    if (isUSSymbol || isKRCode) {
+      setSearchResults([])
+      return
+    }
+
+    setSearchLoading(true)
+    try {
+      const data = await stockApi.searchStocks(query, searchMarket, 6)
+      setSearchResults(data || [])
+      setShowDropdown(data && data.length > 0)
+    } catch (error) {
+      console.error('Search error:', error)
+      setSearchResults([])
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [searchMarket])
+
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchQuery(value)
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    debounceRef.current = setTimeout(() => {
+      searchStocks(value)
+    }, 300)
+  }
+
+  const handleSelectStock = (stock: SearchResult) => {
+    window.location.href = `/stock/${stock.symbol}`
+  }
 
   const features = [
     {
@@ -133,21 +202,66 @@ export default function Home() {
 
       {/* Search */}
       <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-12">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="종목 코드 또는 이름 검색 (예: AAPL, 삼성전자)"
-            className="input pl-12 py-4 text-lg"
-          />
-          <button
-            type="submit"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 btn btn-primary"
-          >
-            검색
-          </button>
+        <div ref={searchRef} className="relative">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleSearchInputChange}
+                onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+                placeholder="종목 코드 또는 이름 검색 (예: AAPL, 삼성전자)"
+                className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              {searchLoading && (
+                <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
+              )}
+            </div>
+            <select
+              value={searchMarket}
+              onChange={(e) => {
+                setSearchMarket(e.target.value as 'US' | 'KR')
+                setSearchResults([])
+              }}
+              className="py-4 px-3 w-24 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="KR">한국</option>
+              <option value="US">미국</option>
+            </select>
+            <button
+              type="submit"
+              className="btn btn-primary py-4 px-6 whitespace-nowrap"
+            >
+              검색
+            </button>
+          </div>
+
+          {/* Autocomplete Dropdown */}
+          {showDropdown && searchResults.length > 0 && (
+            <div className="absolute left-0 right-0 z-50 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+              {searchResults.map((stock, index) => (
+                <button
+                  key={`${stock.symbol}-${index}`}
+                  type="button"
+                  onClick={() => handleSelectStock(stock)}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                >
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      {stock.name}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {stock.symbol}
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                    {stock.exchange || stock.market}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </form>
 

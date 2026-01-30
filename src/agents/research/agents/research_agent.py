@@ -45,6 +45,15 @@ Your task is to research a specific topic using the available tools. For each re
 Available Tools:
 {tools_description}
 
+IMPORTANT RULES FOR STOCK/FINANCIAL RESEARCH:
+1. ALWAYS call stock_data first to get current price, historical prices, and basic stock info
+2. ALWAYS call financials to get financial ratios and statements
+3. ALWAYS call news_search to get recent news and market sentiment
+4. Only mark "sufficient": true after calling ALL required tools
+5. For each stock symbol, you MUST gather: current price, price trend, financials, and recent news
+
+{required_tools_instruction}
+
 When using tools, think about:
 - What information do we need?
 - Which tool is most likely to provide it?
@@ -68,9 +77,12 @@ Overview: {overview}
 
 {context}
 
+{tools_status}
+
 {previous_findings}
 
-Execute research using available tools. Call tools to gather information, then analyze results."""
+Execute research using available tools. Call tools to gather information, then analyze results.
+Remember: For stock analysis, you MUST call stock_data, financials, and news_search before marking as sufficient."""
 
 
 class ResearchAgent(BaseAgent):
@@ -142,6 +154,9 @@ class ResearchAgent(BaseAgent):
         """
         self._tools_description = description
 
+    # Default required tools for stock analysis
+    STOCK_ANALYSIS_REQUIRED_TOOLS = ["stock_data", "financials", "news_search"]
+
     async def process(
         self,
         topic_block: TopicBlock,
@@ -164,6 +179,28 @@ class ResearchAgent(BaseAgent):
         tool_traces: list[ToolTrace] = []
         iteration = 0
 
+        # Track which tools have been called
+        tools_called: set[str] = set()
+
+        # Get required tools from topic block metadata, or use defaults for stock analysis
+        metadata = topic_block.metadata or {}
+        tools_needed = metadata.get("tools_needed", [])
+
+        # Use symbols from argument, fallback to metadata
+        if not symbols:
+            symbols = metadata.get("symbols", [])
+
+        logger.info(f"Research starting for topic: {topic_block.sub_topic}")
+        logger.info(f"Symbols provided: {symbols}")
+
+        # If symbols are provided, ensure stock analysis tools are required
+        if symbols:
+            required_tools = set(self.STOCK_ANALYSIS_REQUIRED_TOOLS)
+            if tools_needed:
+                required_tools.update(tools_needed)
+        else:
+            required_tools = set(tools_needed) if tools_needed else set()
+
         # Build symbols context
         symbols_context = ""
         if symbols:
@@ -178,11 +215,22 @@ class ResearchAgent(BaseAgent):
             if findings:
                 previous_findings = "Previous Findings:\n" + "\n".join(f"- {f}" for f in findings[-5:])
 
+            # Build tools status
+            tools_status = self._build_tools_status(required_tools, tools_called)
+
+            # Build required tools instruction
+            required_tools_instruction = ""
+            if required_tools:
+                remaining = required_tools - tools_called
+                if remaining:
+                    required_tools_instruction = f"REQUIRED TOOLS NOT YET CALLED: {', '.join(sorted(remaining))}\nYou MUST call these tools before marking research as sufficient."
+
             messages = [
                 {
                     "role": "system",
                     "content": RESEARCH_SYSTEM_PROMPT.format(
-                        tools_description=self._tools_description
+                        tools_description=self._tools_description,
+                        required_tools_instruction=required_tools_instruction,
                     ),
                 },
                 {
@@ -191,6 +239,7 @@ class ResearchAgent(BaseAgent):
                         topic=topic_block.sub_topic,
                         overview=topic_block.overview,
                         context=f"{context}\n{symbols_context}".strip(),
+                        tools_status=tools_status,
                         previous_findings=previous_findings,
                     ),
                 },
@@ -200,16 +249,14 @@ class ResearchAgent(BaseAgent):
                 response = await self.call_llm(messages)
                 result = self._parse_response(response)
 
-                # Check if research is sufficient
-                if result.get("sufficient", False):
-                    logger.info(f"Research sufficient for: {topic_block.sub_topic}")
-                    break
-
                 # Execute tool call if specified
                 tool_call = result.get("tool_call")
                 if tool_call and tool_call.get("tool"):
                     tool_name = tool_call["tool"]
                     query = tool_call.get("query", "")
+
+                    # Track tool call
+                    tools_called.add(tool_name)
 
                     # Execute tool (returns tuple: result_string, ToolResult)
                     tool_result_str, router_result = await self._execute_tool(
@@ -232,10 +279,31 @@ class ResearchAgent(BaseAgent):
                     key_findings = result.get("key_findings", [])
                     findings.extend(key_findings)
 
-                else:
-                    # No tool call, check if we should continue
-                    if not result.get("next_step"):
+                # Check if research is sufficient
+                # Only allow sufficient=true if all required tools have been called
+                if result.get("sufficient", False):
+                    remaining_tools = required_tools - tools_called
+                    if remaining_tools:
+                        logger.info(
+                            f"Research marked sufficient but missing required tools: {remaining_tools}"
+                        )
+                        # Force continue - don't break yet
+                        result["sufficient"] = False
+                        result["next_step"] = f"Must call remaining tools: {', '.join(remaining_tools)}"
+                    else:
+                        logger.info(f"Research sufficient for: {topic_block.sub_topic}")
                         break
+
+                # No tool call, check if we should continue
+                if not tool_call or not tool_call.get("tool"):
+                    if not result.get("next_step"):
+                        # Check if we still need to call required tools
+                        remaining_tools = required_tools - tools_called
+                        if remaining_tools:
+                            logger.info(f"No tool call but required tools remain: {remaining_tools}")
+                            # Continue to next iteration
+                        else:
+                            break
 
             except Exception as e:
                 logger.error(f"Error in research iteration {iteration}: {e}")
@@ -249,6 +317,34 @@ class ResearchAgent(BaseAgent):
             "tool_traces": [t.to_dict() for t in tool_traces],
             "summary": self._summarize_findings(findings),
         }
+
+    def _build_tools_status(
+        self,
+        required_tools: set[str],
+        tools_called: set[str],
+    ) -> str:
+        """Build a status string showing which tools have been called.
+
+        Args:
+            required_tools: Set of tools that should be called.
+            tools_called: Set of tools that have been called.
+
+        Returns:
+            Formatted status string.
+        """
+        if not required_tools:
+            return ""
+
+        lines = ["Tools Status:"]
+        for tool in sorted(required_tools):
+            status = "✓ Called" if tool in tools_called else "✗ NOT CALLED YET"
+            lines.append(f"  - {tool}: {status}")
+
+        remaining = required_tools - tools_called
+        if remaining:
+            lines.append(f"\n⚠️ You MUST call these tools: {', '.join(sorted(remaining))}")
+
+        return "\n".join(lines)
 
     async def _execute_tool(
         self,
@@ -339,6 +435,10 @@ class ResearchAgent(BaseAgent):
         # Default symbol (first one if provided)
         symbol = symbols[0] if symbols else None
 
+        # Log symbol usage for debugging
+        query_preview = str(query)[:50] if query else "None"
+        logger.info(f"Building router args: type={router_type}, query={query_preview}..., symbols={symbols}, using_symbol={symbol}")
+
         # Detect market from symbol
         market = "KR" if symbol and symbol.isdigit() and len(symbol) == 6 else "US"
 
@@ -346,7 +446,7 @@ class ResearchAgent(BaseAgent):
             return {
                 "symbol": symbol or query,
                 "market": market,
-                "period": "1mo",
+                "period": "6mo",  # Extended from 1mo to 6mo for better trend analysis
                 "interval": "1d",
             }
         elif router_type == "stock_info":

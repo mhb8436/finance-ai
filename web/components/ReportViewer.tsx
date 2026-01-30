@@ -40,7 +40,25 @@ export default function ReportViewer({ result, className = '' }: ReportViewerPro
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `research_report_${new Date().toISOString().split('T')[0]}.md`
+
+      // Generate filename with date and topic/stock name
+      const date = new Date().toISOString().split('T')[0]
+      let topicName = report.main_topic || 'research_report'
+
+      // Extract stock code if present (e.g., "네이버 (035420.KS)" or "삼성전자")
+      const codeMatch = topicName.match(/\((\d{6})[^)]*\)/)
+      if (codeMatch) {
+        // Use stock code if found
+        topicName = codeMatch[1]
+      } else {
+        // Clean up topic name for filename (remove special characters, limit length)
+        topicName = topicName
+          .replace(/[^\w\s가-힣]/g, '')
+          .replace(/\s+/g, '_')
+          .slice(0, 30)
+      }
+
+      a.download = `${date}_${topicName}_리서치리포트.md`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

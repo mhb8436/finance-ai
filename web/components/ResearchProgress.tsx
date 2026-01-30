@@ -25,6 +25,33 @@ const STAGES: StageInfo[] = [
   { id: 'report', label: '리포트 생성', description: '종합 투자 리포트를 작성합니다' },
 ]
 
+// Event type to user-friendly label mapping
+const EVENT_LABELS: Record<string, string> = {
+  stage_start: '시작',
+  stage_complete: '완료',
+  stage_error: '오류',
+  tool_call: '도구 호출',
+  tool_result: '결과 수신',
+  llm_call: 'AI 분석 중',
+  llm_response: 'AI 응답',
+  progress: '진행 중',
+  thinking: '분석 중',
+  researching: '리서치 중',
+}
+
+// Get user-friendly event label
+const getEventLabel = (event: string | undefined): string => {
+  if (!event) return ''
+  // Check for exact match
+  if (EVENT_LABELS[event]) return EVENT_LABELS[event]
+  // Check for partial match (e.g., "rephrase_stage_start" -> "시작")
+  for (const [key, label] of Object.entries(EVENT_LABELS)) {
+    if (event.toLowerCase().includes(key)) return label
+  }
+  // Return original if no match, but clean up underscores
+  return event.replace(/_/g, ' ')
+}
+
 interface ResearchProgressProps {
   status: ResearchStatus
   currentStage: string | null
@@ -132,9 +159,9 @@ export default function ResearchProgress({
                   <div className="font-medium">{stage.label}</div>
                   <div className="text-sm text-gray-500">{stage.description}</div>
                 </div>
-                {stageStatus === 'running' && progress?.stage === stage.id && (
-                  <span className="text-xs text-primary-600 mr-2">
-                    {progress.event}
+                {stageStatus === 'running' && progress?.stage === stage.id && progress.event && (
+                  <span className="text-xs text-primary-600 mr-2 whitespace-nowrap">
+                    {getEventLabel(progress.event)}
                   </span>
                 )}
                 {isExpanded ? (
@@ -150,10 +177,12 @@ export default function ResearchProgress({
                     <div className="text-sm">
                       <div className="flex items-center gap-2 text-primary-600">
                         <Loader2 className="w-3 h-3 animate-spin" />
-                        <span>현재 단계: {currentStage}</span>
+                        <span className="whitespace-nowrap">
+                          {getEventLabel(progress.event) || '처리 중'}
+                        </span>
                       </div>
-                      {progress.details && (
-                        <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded text-xs overflow-x-auto">
+                      {progress.details && Object.keys(progress.details).length > 0 && (
+                        <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded text-xs overflow-x-auto max-h-32">
                           {JSON.stringify(progress.details, null, 2)}
                         </pre>
                       )}

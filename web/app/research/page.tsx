@@ -15,6 +15,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { pipelineApi } from '@/lib/api'
+import StockSearchInput from '@/components/StockSearchInput'
 import type { ResearchListItem, ResearchStatus, PipelineResearchRequest } from '@/types'
 
 export default function ResearchPage() {
@@ -64,9 +65,38 @@ export default function ResearchPage() {
     setSubmitting(true)
     setError(null)
 
+    // Resolve symbol input to stock codes if needed
+    let resolvedSymbols: string[] = []
+    const rawSymbols = symbolInput.split(',').map((s) => s.trim()).filter(Boolean)
+
+    for (const sym of rawSymbols) {
+      // Check if it's already a valid stock code format
+      const isUSSymbol = /^[A-Za-z]{1,5}$/.test(sym)
+      const isKRCode = /^\d{6}$/.test(sym)
+
+      if (isUSSymbol || isKRCode) {
+        resolvedSymbols.push(sym.toUpperCase())
+      } else {
+        // Try to resolve company name to stock code
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8001'}/api/v1/stock/search?query=${encodeURIComponent(sym)}&market=${formData.market === 'Both' ? 'KR' : formData.market}&limit=1`
+          )
+          if (response.ok) {
+            const results = await response.json()
+            if (results.length > 0) {
+              resolvedSymbols.push(results[0].symbol)
+            }
+          }
+        } catch (err) {
+          console.error('Symbol resolution error:', err)
+        }
+      }
+    }
+
     const { data, error } = await pipelineApi.start({
       ...formData,
-      symbols: symbolInput.split(',').map((s) => s.trim()).filter(Boolean),
+      symbols: resolvedSymbols,
     })
 
     if (error) {
@@ -86,6 +116,8 @@ export default function ResearchPage() {
     const { error } = await pipelineApi.cancel(researchId)
     if (error) {
       setError(error)
+      // Refresh list to get the latest status
+      fetchResearches()
     } else {
       fetchResearches()
     }
@@ -172,13 +204,19 @@ export default function ResearchPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">종목 코드 (쉼표로 구분)</label>
-                <input
-                  type="text"
+                <StockSearchInput
                   value={symbolInput}
-                  onChange={(e) => setSymbolInput(e.target.value)}
-                  placeholder="예: AAPL, MSFT 또는 005930, 000660"
-                  className="input"
+                  onChange={(sym, name) => {
+                    setSymbolInput(sym)
+                    if (name && !formData.topic.includes(name)) {
+                      setFormData({ ...formData, topic: `${name} 종목 분석 및 투자 전망` })
+                    }
+                  }}
+                  market={formData.market === 'Both' ? 'KR' : (formData.market as 'US' | 'KR')}
+                  onMarketChange={(mkt) => setFormData({ ...formData, market: mkt })}
+                  label="종목 검색"
+                  placeholder="종목명 또는 코드 검색"
+                  showMarketSelect={false}
                 />
               </div>
               <div>
